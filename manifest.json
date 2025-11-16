@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "F1 Engine Typer",
+  "description": "Type faster to push the virtual F1 engine.",
+  "version": "0.1.0",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "storage",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
+}

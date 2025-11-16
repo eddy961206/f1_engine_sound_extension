@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>엔진 상태</title>
+    <style>
+      body {
+        width: 260px;
+        margin: 0;
+        padding: 16px;
+        font-family: 'Pretendard', 'Noto Sans KR', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #08090d;
+        color: #f3f3f3;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 0 12px;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      label {
+        font-size: 14px;
+      }
+      input[type='range'] {
+        width: 100%;
+      }
+      .status-box {
+        background: rgba(255, 255, 255, 0.08);
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        font-size: 14px;
+      }
+      button {
+        width: 100%;
+        padding: 8px;
+        border: none;
+        border-radius: 6px;
+        background: #d62828;
+        color: white;
+        cursor: pointer;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>F1 엔진 컨트롤</h1>
+    <div class="row">
+      <label for="engineToggle">엔진 사운드</label>
+      <input type="checkbox" id="engineToggle" />
+    </div>
+    <div class="status-box">
+      <div id="gearText">현재 기어: -</div>
+      <div id="rpmText">RPM: -</div>
+    </div>
+    <div class="row" style="flex-direction: column; align-items: flex-start;">
+      <label for="volumeRange">기본 볼륨 <span id="volumeValue">60%</span></label>
+      <input type="range" id="volumeRange" min="0" max="100" value="60" />
+    </div>
+    <button id="openOptions">상세 옵션 열기</button>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
