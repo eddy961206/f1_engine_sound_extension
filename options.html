@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>엔진 사운드 옵션</title>
+    <style>
+      body {
+        font-family: 'Pretendard', 'Noto Sans KR', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        margin: 0 auto;
+        max-width: 640px;
+        padding: 32px 24px 48px;
+        background: #0c0d13;
+        color: #f6f6f6;
+      }
+      h1 {
+        margin-bottom: 8px;
+      }
+      section {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+      select,
+      input[type='range'] {
+        width: 100%;
+        margin-bottom: 12px;
+      }
+      button {
+        padding: 12px 20px;
+        background: #ef233c;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      #status {
+        margin-top: 12px;
+        min-height: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>F1 엔진 옵션</h1>
+    <p>엔진 타입, 볼륨, 민감도를 조절해 원하는 사운드를 만들어 보세요.</p>
+    <section>
+      <label for="engineType">엔진 타입</label>
+      <select id="engineType">
+        <option value="v6">V6 하이브리드</option>
+        <option value="v8">V8</option>
+        <option value="v10">V10</option>
+        <option value="v12">V12</option>
+      </select>
+    </section>
+    <section>
+      <label for="defaultVolume">기본 볼륨 <span id="volumeDisplay">60%</span></label>
+      <input type="range" id="defaultVolume" min="0" max="100" value="60" />
+    </section>
+    <section>
+      <label for="sensitivity">민감도</label>
+      <select id="sensitivity">
+        <option value="low">낮음 (여유롭게 반응)</option>
+        <option value="medium">보통</option>
+        <option value="high">높음 (작은 타자도 급반응)</option>
+      </select>
+    </section>
+    <button id="saveButton">설정 저장</button>
+    <div id="status"></div>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
