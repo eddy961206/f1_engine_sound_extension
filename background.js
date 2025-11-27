@@ -4,8 +4,10 @@ const MAX_KPS_BASE = 12;
 const MIN_GEAR = 1;
 const MAX_GEAR = 8;
 const ENGINE_UPDATE_INTERVAL = 200;
-const GEAR_UP_RPM = [0, 4000, 5500, 7000, 8000, 9000, 10000, 11000];
-const GEAR_DOWN_RPM = [0, 2000, 3000, 4000, 5000, 6000, 7000, 8000];
+// 각 배열은 0 인덱스를 비워두고 1~8단까지 9개 요소를 유지해야 한다.
+// 가장 높은 단에서도 다운시프트 기준이 존재하도록 마지막 값을 추가한다.
+const GEAR_UP_RPM = [0, 4000, 5500, 7000, 8000, 9000, 10000, 11000, 11000];
+const GEAR_DOWN_RPM = [0, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000];
 const OFFSCREEN_URL = "offscreen.html";
 
 const SETTINGS_DEFAULT = {
