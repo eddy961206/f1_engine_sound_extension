@@ -30,6 +30,14 @@
     - `assets/shift_down.mp3`
 - 추천 소스: 직접 녹음(F1 25 게임 등)하거나, [Freesound F1 engine 검색 결과](https://freesound.org/search/?q=f1+engine)처럼 라이선스 허용 샘플을 내려받아 위 파일명으로 저장하면 됩니다.
 - Web Audio 믹서는 RPM을 기준으로 인접 레이어 두 개만 크로스페이드하고, 변속 시 일시적인 볼륨/피치 딥을 적용합니다. 샘플 간 레벨과 루프 포인트를 비슷하게 맞출수록 더 자연스럽게 들립니다.
+- 저장소에는 용량과 라이선스 문제로 MP3 샘플을 포함하지 않습니다. 아래 파일명을 사용해 직접 추가해 주세요. Chrome 확장 내부에서는 `chrome.runtime.getURL(...)`로 불러오기 때문에 동일한 이름/경로를 지켜야 합니다.
+  - 엔진 루프(옵션의 엔진 타입 값과 매칭):
+    - `assets/engine_v6_loop.mp3`
+    - `assets/engine_v8_loop.mp3`
+    - `assets/engine_v10_loop.mp3`
+    - `assets/engine_v12_loop.mp3`
+  - 변속 효과음(공통): `assets/shift_up.mp3`, `assets/shift_down.mp3`
+- 자유롭게 사용할 수 있는 소스 예시: [Freesound F1 engine 검색 결과](https://freesound.org/search/?q=f1+engine). CC0/CC-BY 등 허용 라이선스를 확인한 뒤 다운로드하여 위 파일명으로 저장하면 바로 동작합니다.
 
 ## 설치 및 테스트
 1. Chrome 주소창에 `chrome://extensions` 입력 후 개발자 모드를 켭니다.
