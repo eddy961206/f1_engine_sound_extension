@@ -1,4 +1,8 @@
 # Ignore user-supplied binary assets
+assets/**/*.mp3
+assets/**/*.wav
+assets/**/*.ogg
+assets/**/*.flac
 assets/*.mp3
 assets/*.wav
 assets/*.ogg
