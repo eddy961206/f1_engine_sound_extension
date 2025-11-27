@@ -17,9 +17,13 @@
 - 저장소에는 기본 아이콘이 포함되지 않으며 `.gitignore`에 의해 추적되지 않습니다. 배포 전 반드시 로컬에서 아이콘을 추가해야 합니다.
 
 ### 오디오 파일 준비
-- 저장소에는 용량과 라이선스 문제로 MP3 샘플을 포함하지 않습니다. 아래 파일명을 사용해 직접 추가해 주세요.
-  - `assets/engine_v10_loop.mp3`: 루프 재생용 엔진 사운드
-  - `assets/shift_up.mp3`, `assets/shift_down.mp3`: 원샷 변속 효과음
+- 저장소에는 용량과 라이선스 문제로 MP3 샘플을 포함하지 않습니다. 아래 파일명을 사용해 직접 추가해 주세요. Chrome 확장 내부에서는 `chrome.runtime.getURL(...)`로 불러오기 때문에 동일한 이름/경로를 지켜야 합니다.
+  - 엔진 루프(옵션의 엔진 타입 값과 매칭):
+    - `assets/engine_v6_loop.mp3`
+    - `assets/engine_v8_loop.mp3`
+    - `assets/engine_v10_loop.mp3`
+    - `assets/engine_v12_loop.mp3`
+  - 변속 효과음(공통): `assets/shift_up.mp3`, `assets/shift_down.mp3`
 - 자유롭게 사용할 수 있는 소스 예시: [Freesound F1 engine 검색 결과](https://freesound.org/search/?q=f1+engine). CC0/CC-BY 등 허용 라이선스를 확인한 뒤 다운로드하여 위 파일명으로 저장하면 바로 동작합니다.
 
 ## 설치 및 테스트

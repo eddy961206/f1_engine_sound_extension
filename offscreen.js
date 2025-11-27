@@ -1,10 +1,10 @@
 const MIN_RPM = 1000;
 const MAX_RPM = 11000;
 const ENGINE_FILES = {
-  v6: "assets/engine_v10_loop.mp3",
-  v8: "assets/engine_v10_loop.mp3",
+  v6: "assets/engine_v6_loop.mp3",
+  v8: "assets/engine_v8_loop.mp3",
   v10: "assets/engine_v10_loop.mp3",
-  v12: "assets/engine_v10_loop.mp3"
+  v12: "assets/engine_v12_loop.mp3"
 };
 const RPM_SEGMENTS = [
   { name: "idle", start: MIN_RPM, end: 2500 },
@@ -20,8 +20,9 @@ const SHIFT_FILES = {
 };
 
 let audioContext;
-let gainNode;
-let engineLayers = [];
+let masterGain;
+let engineSource;
+let engineSourceGain;
 const engineBuffers = new Map();
 const shiftBuffers = new Map();
 let currentEngineType = "v10";
@@ -32,9 +33,9 @@ let shiftAutomationEndTime = 0;
 async function ensureContext() {
   if (!audioContext) {
     audioContext = new AudioContext();
-    gainNode = audioContext.createGain();
-    gainNode.gain.value = targetVolume;
-    gainNode.connect(audioContext.destination);
+    masterGain = audioContext.createGain();
+    masterGain.gain.value = targetVolume;
+    masterGain.connect(audioContext.destination);
   }
   if (audioContext.state === "suspended") {
     await audioContext.resume();
@@ -54,31 +55,73 @@ async function fetchBuffer(path, cache) {
 function getAudioContext() {
   if (!audioContext) {
     audioContext = new AudioContext();
-    gainNode = audioContext.createGain();
-    gainNode.gain.value = targetVolume;
-    gainNode.connect(audioContext.destination);
+    masterGain = audioContext.createGain();
+    masterGain.gain.value = targetVolume;
+    masterGain.connect(audioContext.destination);
   }
   return audioContext;
 }
 
 async function ensureEngineLoop(engineType) {
   await ensureContext();
-  if (engineLayers.length && currentEngineType === engineType) return;
-  const filePath = ENGINE_FILES[engineType] || ENGINE_FILES.v10;
-  currentEngineType = engineType;
+  const normalizedType = ENGINE_FILES[engineType] ? engineType : "v10";
+  if (engineSource && currentEngineType === normalizedType) return;
+
+  const filePath = ENGINE_FILES[normalizedType];
+  currentEngineType = normalizedType;
   const buffer = await fetchBuffer(filePath, engineBuffers);
-  stopEngineLoop();
-  engineLayers = RPM_SEGMENTS.map((segment) => {
-    const source = getAudioContext().createBufferSource();
-    source.buffer = buffer;
-    source.loop = true;
-    const layerGain = getAudioContext().createGain();
-    layerGain.gain.value = 0;
-    source.connect(layerGain);
-    layerGain.connect(gainNode);
-    source.start();
-    return { segment, source, gain: layerGain };
-  });
+
+  if (!engineSource) {
+    engineSource = getAudioContext().createBufferSource();
+    engineSourceGain = getAudioContext().createGain();
+    engineSourceGain.gain.value = 1;
+    engineSource.buffer = buffer;
+    engineSource.loop = true;
+    engineSource.connect(engineSourceGain);
+    engineSourceGain.connect(masterGain);
+    engineSource.start();
+    return;
+  }
+
+  const fadeDuration = 0.35;
+  const now = getAudioContext().currentTime;
+
+  const oldSource = engineSource;
+  const oldGain = engineSourceGain;
+
+  const newSource = getAudioContext().createBufferSource();
+  const newGain = getAudioContext().createGain();
+  newGain.gain.value = 0;
+  newSource.buffer = buffer;
+  newSource.loop = true;
+  newSource.connect(newGain);
+  newGain.connect(masterGain);
+  newSource.start();
+
+  oldGain.gain.cancelScheduledValues(now);
+  oldGain.gain.setValueAtTime(oldGain.gain.value, now);
+  oldGain.gain.linearRampToValueAtTime(0, now + fadeDuration);
+
+  newGain.gain.cancelScheduledValues(now);
+  newGain.gain.setValueAtTime(0, now);
+  newGain.gain.linearRampToValueAtTime(1, now + fadeDuration);
+
+  engineSource = newSource;
+  engineSourceGain = newGain;
+
+  try {
+    oldSource.stop(now + fadeDuration + 0.05);
+  } catch (error) {
+    // 이미 정지된 경우 무시
+  }
+  setTimeout(() => {
+    try {
+      oldSource.disconnect();
+      oldGain.disconnect();
+    } catch (error) {
+      // 이미 해제된 경우 무시
+    }
+  }, (fadeDuration + 0.1) * 1000);
 }
 
 function stopEngineLoop() {
@@ -89,16 +132,24 @@ function stopEngineLoop() {
     } catch (error) {
       // 이미 정지된 경우 무시
     }
-    source.disconnect();
-    gain.disconnect();
-  });
-  engineLayers = [];
+    engineSource.disconnect();
+    if (engineSourceGain) {
+      engineSourceGain.disconnect();
+    }
+    engineSource = null;
+    engineSourceGain = null;
+  }
+}
+
+function setPlaybackRate(rate) {
+  if (!engineSource) return;
+  engineSource.playbackRate.value = rate;
 }
 
 function setVolume(volume) {
   targetVolume = volume;
-  if (gainNode) {
-    gainNode.gain.setTargetAtTime(volume, getAudioContext().currentTime, 0.05);
+  if (masterGain) {
+    masterGain.gain.setTargetAtTime(volume, getAudioContext().currentTime, 0.05);
   }
 }
 
@@ -171,7 +222,7 @@ async function playShiftSound(direction) {
   const buffer = await fetchBuffer(SHIFT_FILES[direction], shiftBuffers);
   const source = getAudioContext().createBufferSource();
   source.buffer = buffer;
-  source.connect(gainNode);
+  source.connect(masterGain);
   source.start();
 }
 
