@@ -30,14 +30,6 @@
     - `assets/shift_down.mp3`
 - 추천 소스: 직접 녹음(F1 25 게임 등)하거나, [Freesound F1 engine 검색 결과](https://freesound.org/search/?q=f1+engine)처럼 라이선스 허용 샘플을 내려받아 위 파일명으로 저장하면 됩니다.
 - Web Audio 믹서는 RPM을 기준으로 인접 레이어 두 개만 크로스페이드하고, 변속 시 일시적인 볼륨/피치 딥을 적용합니다. 샘플 간 레벨과 루프 포인트를 비슷하게 맞출수록 더 자연스럽게 들립니다.
-- 저장소에는 용량과 라이선스 문제로 MP3 샘플을 포함하지 않습니다. 아래 파일명을 사용해 직접 추가해 주세요. Chrome 확장 내부에서는 `chrome.runtime.getURL(...)`로 불러오기 때문에 동일한 이름/경로를 지켜야 합니다.
-  - 엔진 루프(옵션의 엔진 타입 값과 매칭):
-    - `assets/engine_v6_loop.mp3`
-    - `assets/engine_v8_loop.mp3`
-    - `assets/engine_v10_loop.mp3`
-    - `assets/engine_v12_loop.mp3`
-  - 변속 효과음(공통): `assets/shift_up.mp3`, `assets/shift_down.mp3`
-- 자유롭게 사용할 수 있는 소스 예시: [Freesound F1 engine 검색 결과](https://freesound.org/search/?q=f1+engine). CC0/CC-BY 등 허용 라이선스를 확인한 뒤 다운로드하여 위 파일명으로 저장하면 바로 동작합니다.
 
 ## 설치 및 테스트
 1. Chrome 주소창에 `chrome://extensions` 입력 후 개발자 모드를 켭니다.
@@ -45,6 +37,10 @@
 3. 아무 웹 페이지 텍스트 입력창에서 타이핑하여 엔진 사운드가 RPM/기어에 따라 변하는지 확인합니다.
 4. 팝업에서 엔진 사운드를 켜고 끄거나, 현재 기어/RPM과 볼륨을 확인·조절합니다.
 5. 옵션 페이지에서 엔진 타입, 기본 볼륨, 민감도를 조절한 뒤 저장합니다.
+
+### 브랜치 동기화 팁
+- 원격 `main`이 존재하는 경우, 작업 전 `git fetch origin` 후 `git merge origin/main` 또는 `git rebase origin/main`으로 최신 커밋을 받아 충돌을 예방하세요.
+- 이 저장소는 기본적으로 작업 브랜치(`work`)를 사용하므로, 로컬에서 `main`을 생성했다면 동일한 최신 커밋을 가리키도록 맞춘 뒤 작업을 시작하면 병합 충돌을 줄일 수 있습니다.
 
 ## 향후 개선 아이디어
 - 실제 F1 엔진 샘플(기어/ RPM 구간별 다중 샘플) 로딩 및 크로스페이드
