@@ -1,13 +1,19 @@
 const MIN_RPM = 1000;
 const MAX_RPM = 11000;
-const MIN_RATE = 0.6;
-const MAX_RATE = 2.2;
 const ENGINE_FILES = {
   v6: "assets/engine_v10_loop.mp3",
   v8: "assets/engine_v10_loop.mp3",
   v10: "assets/engine_v10_loop.mp3",
   v12: "assets/engine_v10_loop.mp3"
 };
+const RPM_SEGMENTS = [
+  { name: "idle", start: MIN_RPM, end: 2500 },
+  { name: "low", start: 2500, end: 4500 },
+  { name: "mid", start: 4500, end: 6500 },
+  { name: "high", start: 6500, end: 8500 },
+  { name: "redline", start: 8500, end: MAX_RPM }
+];
+const LAYER_RATE_VARIATION = 0.08;
 const SHIFT_FILES = {
   UP: "assets/shift_up.mp3",
   DOWN: "assets/shift_down.mp3"
@@ -15,7 +21,7 @@ const SHIFT_FILES = {
 
 let audioContext;
 let gainNode;
-let engineSource;
+let engineLayers = [];
 const engineBuffers = new Map();
 const shiftBuffers = new Map();
 let currentEngineType = "v10";
@@ -57,40 +63,36 @@ function getAudioContext() {
 
 async function ensureEngineLoop(engineType) {
   await ensureContext();
-  if (engineSource && currentEngineType === engineType) return;
+  if (engineLayers.length && currentEngineType === engineType) return;
   const filePath = ENGINE_FILES[engineType] || ENGINE_FILES.v10;
   currentEngineType = engineType;
   const buffer = await fetchBuffer(filePath, engineBuffers);
-  if (engineSource) {
-    try {
-      engineSource.stop();
-    } catch (error) {
-      // 이미 정지된 경우 무시
-    }
-    engineSource.disconnect();
-  }
-  engineSource = getAudioContext().createBufferSource();
-  engineSource.buffer = buffer;
-  engineSource.loop = true;
-  engineSource.connect(gainNode);
-  engineSource.start();
+  stopEngineLoop();
+  engineLayers = RPM_SEGMENTS.map((segment) => {
+    const source = getAudioContext().createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    const layerGain = getAudioContext().createGain();
+    layerGain.gain.value = 0;
+    source.connect(layerGain);
+    layerGain.connect(gainNode);
+    source.start();
+    return { segment, source, gain: layerGain };
+  });
 }
 
 function stopEngineLoop() {
-  if (engineSource) {
+  if (!engineLayers.length) return;
+  engineLayers.forEach(({ source, gain }) => {
     try {
-      engineSource.stop();
+      source.stop();
     } catch (error) {
       // 이미 정지된 경우 무시
     }
-    engineSource.disconnect();
-    engineSource = null;
-  }
-}
-
-function setPlaybackRate(rate) {
-  if (!engineSource) return;
-  engineSource.playbackRate.value = rate;
+    source.disconnect();
+    gain.disconnect();
+  });
+  engineLayers = [];
 }
 
 function setVolume(volume) {
@@ -98,6 +100,54 @@ function setVolume(volume) {
   if (gainNode) {
     gainNode.gain.setTargetAtTime(volume, getAudioContext().currentTime, 0.05);
   }
+}
+
+function clampRpm(rpm) {
+  return Math.min(Math.max(rpm, MIN_RPM), MAX_RPM);
+}
+
+function segmentBlend(rpm) {
+  const clamped = clampRpm(rpm);
+  for (let i = 0; i < RPM_SEGMENTS.length; i++) {
+    const segment = RPM_SEGMENTS[i];
+    const isLast = i === RPM_SEGMENTS.length - 1;
+    if (clamped <= segment.end || isLast) {
+      const span = Math.max(segment.end - segment.start, 1);
+      const position = Math.min(Math.max((clamped - segment.start) / span, 0), 1);
+      return {
+        primaryIndex: i,
+        secondaryIndex: isLast ? null : i + 1,
+        secondaryWeight: isLast ? 0 : position
+      };
+    }
+  }
+  return { primaryIndex: 0, secondaryIndex: null, secondaryWeight: 0 };
+}
+
+function updateLayerRates(rpm) {
+  const clamped = clampRpm(rpm);
+  engineLayers.forEach(({ segment, source }) => {
+    const span = Math.max(segment.end - segment.start, 1);
+    const offset = Math.min(Math.max((clamped - segment.start) / span, 0), 1);
+    const rateOffset = (offset - 0.5) * 2 * LAYER_RATE_VARIATION;
+    source.playbackRate.setTargetAtTime(1 + rateOffset, getAudioContext().currentTime, 0.05);
+  });
+}
+
+function updateEngineMix(rpm) {
+  if (!engineLayers.length) return;
+  const { primaryIndex, secondaryIndex, secondaryWeight } = segmentBlend(rpm);
+  const currentTime = getAudioContext().currentTime;
+  engineLayers.forEach((layer, index) => {
+    let target = 0;
+    if (index === primaryIndex) {
+      target = 1 - secondaryWeight;
+    } else if (index === secondaryIndex) {
+      target = secondaryWeight;
+    }
+    layer.gain.gain.setTargetAtTime(target, currentTime, 0.05);
+  });
+  updateLayerRates(rpm);
 }
 
 async function handleEngineState(message) {
