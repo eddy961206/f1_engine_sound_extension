@@ -20,6 +20,8 @@ const engineBuffers = new Map();
 const shiftBuffers = new Map();
 let currentEngineType = "v10";
 let targetVolume = 0.6;
+let lastEngineState = { rpm: MIN_RPM, gear: 1, playbackRate: MIN_RATE };
+let shiftAutomationEndTime = 0;
 
 async function ensureContext() {
   if (!audioContext) {
@@ -99,13 +101,18 @@ function setVolume(volume) {
 }
 
 async function handleEngineState(message) {
-  const { rpm, settings } = message;
+  const { rpm, settings, gear } = message;
   if (!settings.enabled) return;
   await ensureEngineLoop(settings.engineType);
   setVolume(settings.volume ?? 0.6);
-  const ratio = Math.min(Math.max((rpm - MIN_RPM) / (MAX_RPM - MIN_RPM), 0), 1);
-  const playbackRate = MIN_RATE + (MAX_RATE - MIN_RATE) * ratio;
-  setPlaybackRate(playbackRate);
+  const playbackRate = computePlaybackRateFromRpm(rpm);
+  lastEngineState = { rpm, gear: gear ?? lastEngineState.gear, playbackRate };
+  const currentTime = getAudioContext().currentTime;
+  if (shiftAutomationEndTime > currentTime && engineSource) {
+    engineSource.playbackRate.setValueAtTime(playbackRate, shiftAutomationEndTime);
+  } else {
+    setPlaybackRate(playbackRate);
+  }
 }
 
 async function playShiftSound(direction) {
@@ -116,6 +123,56 @@ async function playShiftSound(direction) {
   source.buffer = buffer;
   source.connect(gainNode);
   source.start();
+}
+
+function computePlaybackRateFromRpm(rpm) {
+  const ratio = Math.min(Math.max((rpm - MIN_RPM) / (MAX_RPM - MIN_RPM), 0), 1);
+  return MIN_RATE + (MAX_RATE - MIN_RATE) * ratio;
+}
+
+function computePostShiftRpm(gear, direction) {
+  const previousGear = direction === "UP" ? gear - 1 : gear + 1;
+  if (previousGear < 1 || gear < 1) {
+    return lastEngineState.rpm;
+  }
+  const gearRatio = previousGear / gear;
+  const estimatedRpm = lastEngineState.rpm * gearRatio;
+  return Math.min(Math.max(estimatedRpm, MIN_RPM), MAX_RPM);
+}
+
+function applyShiftAutomation(direction, gear) {
+  if (!engineSource || !gainNode) return;
+  const ctx = getAudioContext();
+  const now = ctx.currentTime;
+  const adjustedRpm = computePostShiftRpm(gear ?? lastEngineState.gear, direction);
+  const targetPlaybackRate = computePlaybackRateFromRpm(adjustedRpm);
+  const normalizedGear = Math.min(Math.max((gear || lastEngineState.gear) - 1, 0), 7);
+  const dipAmount = 0.22 - normalizedGear * ((0.22 - 0.08) / 7);
+  const dipDuration = 0.12;
+  const releaseDuration = 0.2;
+  const dipPlaybackRate = Math.max(MIN_RATE, targetPlaybackRate * (1 - dipAmount));
+
+  engineSource.playbackRate.cancelScheduledValues(now);
+  engineSource.playbackRate.setValueAtTime(engineSource.playbackRate.value, now);
+  engineSource.playbackRate.linearRampToValueAtTime(dipPlaybackRate, now + dipDuration);
+  engineSource.playbackRate.linearRampToValueAtTime(
+    targetPlaybackRate,
+    now + dipDuration + releaseDuration
+  );
+
+  const gainDipAmount = 0.14 + (0.06 * (1 - normalizedGear / 7));
+  const dipGain = targetVolume * (1 - gainDipAmount);
+  gainNode.gain.cancelScheduledValues(now);
+  gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+  gainNode.gain.linearRampToValueAtTime(dipGain, now + dipDuration);
+  gainNode.gain.linearRampToValueAtTime(targetVolume, now + dipDuration + releaseDuration);
+
+  shiftAutomationEndTime = now + dipDuration + releaseDuration;
+  lastEngineState = {
+    rpm: adjustedRpm,
+    gear: gear ?? lastEngineState.gear,
+    playbackRate: targetPlaybackRate
+  };
 }
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -132,5 +189,6 @@ chrome.runtime.onMessage.addListener((message) => {
     }
   } else if (message.type === "SHIFT") {
     playShiftSound(message.direction);
+    applyShiftAutomation(message.direction, message.gear);
   }
 });
