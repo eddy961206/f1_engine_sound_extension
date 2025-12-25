@@ -1,88 +1,107 @@
 const MIN_RPM = 1000;
 const MAX_RPM = 11000;
-const MIN_RATE = 0.9;
-const MAX_RATE = 1.1;
 
-// 엔진 타입별 RPM 구간 레이어 구성 (사용자가 파일을 채워 넣어야 함)
-const ENGINE_LAYER_CONFIG = {
-  v6: [
-    { id: "idle", ratio: 0.0, file: "assets/v6/engine_idle.mp3" },
-    { id: "low", ratio: 0.25, file: "assets/v6/engine_low.mp3" },
-    { id: "mid", ratio: 0.55, file: "assets/v6/engine_mid.mp3" },
-    { id: "high", ratio: 0.85, file: "assets/v6/engine_high.mp3" },
-    { id: "red", ratio: 1.0, file: "assets/v6/engine_redline.mp3" }
-  ],
-  v8: [
-    { id: "idle", ratio: 0.0, file: "assets/v8/engine_idle.mp3" },
-    { id: "low", ratio: 0.25, file: "assets/v8/engine_low.mp3" },
-    { id: "mid", ratio: 0.55, file: "assets/v8/engine_mid.mp3" },
-    { id: "high", ratio: 0.85, file: "assets/v8/engine_high.mp3" },
-    { id: "red", ratio: 1.0, file: "assets/v8/engine_redline.mp3" }
-  ],
-  v10: [
-    { id: "idle", ratio: 0.0, file: "assets/v10/engine_idle.mp3" },
-    { id: "low", ratio: 0.25, file: "assets/v10/engine_low.mp3" },
-    { id: "mid", ratio: 0.55, file: "assets/v10/engine_mid.mp3" },
-    { id: "high", ratio: 0.85, file: "assets/v10/engine_high.mp3" },
-    { id: "red", ratio: 1.0, file: "assets/v10/engine_redline.mp3" }
-  ],
-  v12: [
-    { id: "idle", ratio: 0.0, file: "assets/v12/engine_idle.mp3" },
-    { id: "low", ratio: 0.25, file: "assets/v12/engine_low.mp3" },
-    { id: "mid", ratio: 0.55, file: "assets/v12/engine_mid.mp3" },
-    { id: "high", ratio: 0.85, file: "assets/v12/engine_high.mp3" },
-    { id: "red", ratio: 1.0, file: "assets/v12/engine_redline.mp3" }
-  ]
-};
-
-const ENGINE_FILES = {
-  v6: "assets/engine_v6_loop.mp3",
-  v8: "assets/engine_v8_loop.mp3",
-  v10: "assets/engine_v10_loop.mp3",
-  v12: "assets/engine_v12_loop.mp3"
-};
-const RPM_SEGMENTS = [
-  { name: "idle", start: MIN_RPM, end: 2500 },
-  { name: "low", start: 2500, end: 4500 },
-  { name: "mid", start: 4500, end: 6500 },
-  { name: "high", start: 6500, end: 8500 },
-  { name: "redline", start: 8500, end: MAX_RPM }
-];
-const LAYER_RATE_VARIATION = 0.08;
-const SHIFT_FILES = {
-  UP: "assets/shift_up.mp3",
-  DOWN: "assets/shift_down.mp3"
+const ENGINE_PROFILES = {
+  v6: {
+    cylinders: 6,
+    baseWave: "triangle",
+    buzzWave: "sawtooth",
+    detuneCents: 4,
+    buzzHarmonic: 2.4,
+    baseGain: [0.16, 0.28],
+    subGain: [0.28, 0.12],
+    buzzGain: [0.05, 0.18],
+    noiseGain: [0.02, 0.12],
+    bodyFilter: [500, 2600],
+    noiseFilter: [1200, 6200],
+    bodyQ: 0.7,
+    noiseQ: 0.8,
+    drive: [0.9, 1.4],
+    distortion: 24
+  },
+  v8: {
+    cylinders: 8,
+    baseWave: "square",
+    buzzWave: "sawtooth",
+    detuneCents: 6,
+    buzzHarmonic: 2.1,
+    baseGain: [0.2, 0.33],
+    subGain: [0.32, 0.16],
+    buzzGain: [0.08, 0.22],
+    noiseGain: [0.03, 0.15],
+    bodyFilter: [450, 2400],
+    noiseFilter: [1200, 6800],
+    bodyQ: 0.8,
+    noiseQ: 0.9,
+    drive: [1.0, 1.6],
+    distortion: 28
+  },
+  v10: {
+    cylinders: 10,
+    baseWave: "sawtooth",
+    buzzWave: "square",
+    detuneCents: 7,
+    buzzHarmonic: 2.7,
+    baseGain: [0.18, 0.3],
+    subGain: [0.22, 0.1],
+    buzzGain: [0.1, 0.28],
+    noiseGain: [0.03, 0.18],
+    bodyFilter: [600, 3400],
+    noiseFilter: [1500, 8200],
+    bodyQ: 0.7,
+    noiseQ: 1.1,
+    drive: [1.1, 1.8],
+    distortion: 32
+  },
+  v12: {
+    cylinders: 12,
+    baseWave: "sawtooth",
+    buzzWave: "triangle",
+    detuneCents: 5,
+    buzzHarmonic: 2.2,
+    baseGain: [0.16, 0.28],
+    subGain: [0.2, 0.08],
+    buzzGain: [0.08, 0.24],
+    noiseGain: [0.02, 0.14],
+    bodyFilter: [650, 3600],
+    noiseFilter: [1400, 7600],
+    bodyQ: 0.6,
+    noiseQ: 1.0,
+    drive: [0.95, 1.6],
+    distortion: 26
+  }
 };
 
 let audioContext;
-let mixGain; // 레이어 합산 버스
-let shiftGain; // 변속시 일시 감쇠용
-let volumeGain; // 사용자 설정 볼륨
-const engineBuffers = new Map();
-const shiftBuffers = new Map();
+let mixGain;
+let shiftGain;
+let volumeGain;
+let masterGain;
+
 let currentEngineType = "v10";
-let layerPlayers = new Map();
+let engineNodes = null;
 let targetVolume = 0.6;
-let lastNormalized = 0;
+let lastRpm = MIN_RPM;
 let shiftPitchMul = 1;
 let shiftRecoverTimer;
+let noiseBuffer;
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
-let masterGain;
-let engineSource;
-let engineSourceGain;
-const engineBuffers = new Map();
-const shiftBuffers = new Map();
-let currentEngineType = "v10";
-let targetVolume = 0.6;
-let lastEngineState = { rpm: MIN_RPM, gear: 1, playbackRate: MIN_RATE };
-let shiftAutomationEndTime = 0;
+
+function lerp(min, max, t) {
+  return min + (max - min) * t;
+}
+
+function getProfile(engineType) {
+  return ENGINE_PROFILES[engineType] || ENGINE_PROFILES.v10;
+}
 
 async function ensureContext() {
   if (!audioContext) {
     audioContext = new AudioContext();
+
     mixGain = audioContext.createGain();
     mixGain.gain.value = 1;
 
@@ -92,11 +111,15 @@ async function ensureContext() {
     volumeGain = audioContext.createGain();
     volumeGain.gain.value = targetVolume;
 
-    mixGain.connect(shiftGain).connect(volumeGain).connect(audioContext.destination);
     masterGain = audioContext.createGain();
-    masterGain.gain.value = targetVolume;
+    masterGain.gain.value = 1;
+
+    mixGain.connect(shiftGain);
+    shiftGain.connect(volumeGain);
+    volumeGain.connect(masterGain);
     masterGain.connect(audioContext.destination);
   }
+
   if (audioContext.state === "suspended") {
     await audioContext.resume();
   }
@@ -104,140 +127,155 @@ async function ensureContext() {
 
 function getAudioContext() {
   if (!audioContext) {
-    audioContext = new AudioContext();
+    ensureContext();
   }
   return audioContext;
 }
 
-async function fetchBuffer(path, cache) {
-  if (cache.has(path)) return cache.get(path);
-  const url = chrome.runtime.getURL(path);
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = await getAudioContext().decodeAudioData(arrayBuffer);
-  cache.set(path, buffer);
-  return buffer;
+function getNoiseBuffer() {
+  if (noiseBuffer) return noiseBuffer;
+  const ctx = getAudioContext();
+  const length = ctx.sampleRate * 2;
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) {
+    data[i] = (Math.random() * 2 - 1) * 0.9;
+  }
+  noiseBuffer = buffer;
+  return noiseBuffer;
 }
 
-function stopAllLayers() {
-  layerPlayers.forEach(({ source, gain }) => {
-function getAudioContext() {
-  if (!audioContext) {
-    audioContext = new AudioContext();
-    masterGain = audioContext.createGain();
-    masterGain.gain.value = targetVolume;
-    masterGain.connect(audioContext.destination);
-  }
-  return audioContext;
+function createNoiseSource(loop = true) {
+  const ctx = getAudioContext();
+  const source = ctx.createBufferSource();
+  source.buffer = getNoiseBuffer();
+  source.loop = loop;
+  return source;
 }
 
-async function ensureEngineLoop(engineType) {
-  await ensureContext();
-  const normalizedType = ENGINE_FILES[engineType] ? engineType : "v10";
-  if (engineSource && currentEngineType === normalizedType) return;
-
-  const filePath = ENGINE_FILES[normalizedType];
-  currentEngineType = normalizedType;
-  const buffer = await fetchBuffer(filePath, engineBuffers);
-
-  if (!engineSource) {
-    engineSource = getAudioContext().createBufferSource();
-    engineSourceGain = getAudioContext().createGain();
-    engineSourceGain.gain.value = 1;
-    engineSource.buffer = buffer;
-    engineSource.loop = true;
-    engineSource.connect(engineSourceGain);
-    engineSourceGain.connect(masterGain);
-    engineSource.start();
-    return;
+function makeDistortionCurve(amount) {
+  const size = 2048;
+  const curve = new Float32Array(size);
+  const k = amount;
+  for (let i = 0; i < size; i++) {
+    const x = (i * 2) / size - 1;
+    curve[i] = ((3 + k) * x * 20 * (Math.PI / 180)) / (Math.PI + k * Math.abs(x));
   }
-
-  const fadeDuration = 0.35;
-  const now = getAudioContext().currentTime;
-
-  const oldSource = engineSource;
-  const oldGain = engineSourceGain;
-
-  const newSource = getAudioContext().createBufferSource();
-  const newGain = getAudioContext().createGain();
-  newGain.gain.value = 0;
-  newSource.buffer = buffer;
-  newSource.loop = true;
-  newSource.connect(newGain);
-  newGain.connect(masterGain);
-  newSource.start();
-
-  oldGain.gain.cancelScheduledValues(now);
-  oldGain.gain.setValueAtTime(oldGain.gain.value, now);
-  oldGain.gain.linearRampToValueAtTime(0, now + fadeDuration);
-
-  newGain.gain.cancelScheduledValues(now);
-  newGain.gain.setValueAtTime(0, now);
-  newGain.gain.linearRampToValueAtTime(1, now + fadeDuration);
-
-  engineSource = newSource;
-  engineSourceGain = newGain;
-
-  try {
-    oldSource.stop(now + fadeDuration + 0.05);
-  } catch (error) {
-    // 이미 정지된 경우 무시
-  }
-  setTimeout(() => {
-    try {
-      oldSource.disconnect();
-      oldGain.disconnect();
-    } catch (error) {
-      // 이미 해제된 경우 무시
-    }
-  }, (fadeDuration + 0.1) * 1000);
+  return curve;
 }
 
-function stopEngineLoop() {
-  if (!engineLayers.length) return;
-  engineLayers.forEach(({ source, gain }) => {
+function stopEngine() {
+  if (!engineNodes) return;
+  engineNodes.sources.forEach((source) => {
     try {
       source.stop();
-    } catch (error) {
-      // 이미 정지된 경우 무시
+    } catch (e) {
+      /* ignore */
     }
     source.disconnect();
-    gain.disconnect();
   });
-  layerPlayers.clear();
+  engineNodes.nodes.forEach((node) => node.disconnect());
+  engineNodes = null;
+  shiftPitchMul = 1;
+  if (shiftRecoverTimer) {
+    clearTimeout(shiftRecoverTimer);
+    shiftRecoverTimer = undefined;
+  }
 }
 
-async function prepareEngineLayers(engineType) {
+function buildEngineNodes(profile) {
+  const ctx = getAudioContext();
+
+  const preGain = ctx.createGain();
+  const driveGain = ctx.createGain();
+  const shaper = ctx.createWaveShaper();
+  shaper.curve = makeDistortionCurve(profile.distortion);
+  shaper.oversample = "4x";
+
+  const bodyFilter = ctx.createBiquadFilter();
+  bodyFilter.type = "lowpass";
+  bodyFilter.Q.value = profile.bodyQ;
+
+  preGain.connect(driveGain);
+  driveGain.connect(shaper);
+  shaper.connect(bodyFilter);
+  bodyFilter.connect(mixGain);
+
+  const baseA = ctx.createOscillator();
+  baseA.type = profile.baseWave;
+  const baseB = ctx.createOscillator();
+  baseB.type = profile.baseWave;
+  baseB.detune.value = profile.detuneCents;
+
+  const sub = ctx.createOscillator();
+  sub.type = "sine";
+
+  const buzz = ctx.createOscillator();
+  buzz.type = profile.buzzWave;
+
+  const baseGain = ctx.createGain();
+  const subGain = ctx.createGain();
+  const buzzGain = ctx.createGain();
+
+  baseGain.gain.value = 0;
+  subGain.gain.value = 0;
+  buzzGain.gain.value = 0;
+
+  baseA.connect(baseGain).connect(preGain);
+  baseB.connect(baseGain);
+  sub.connect(subGain).connect(preGain);
+  buzz.connect(buzzGain).connect(preGain);
+
+  const noiseSource = createNoiseSource();
+  const noiseFilter = ctx.createBiquadFilter();
+  noiseFilter.type = "bandpass";
+  noiseFilter.Q.value = profile.noiseQ;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.value = 0;
+  noiseSource.connect(noiseFilter).connect(noiseGain).connect(mixGain);
+
+  baseA.start();
+  baseB.start();
+  sub.start();
+  buzz.start();
+  noiseSource.start();
+
+  return {
+    profile,
+    sources: [baseA, baseB, sub, buzz, noiseSource],
+    nodes: [
+      preGain,
+      driveGain,
+      shaper,
+      bodyFilter,
+      baseGain,
+      subGain,
+      buzzGain,
+      noiseFilter,
+      noiseGain
+    ],
+    baseA,
+    baseB,
+    sub,
+    buzz,
+    baseGain,
+    subGain,
+    buzzGain,
+    noiseSource,
+    noiseFilter,
+    noiseGain,
+    bodyFilter,
+    driveGain
+  };
+}
+
+async function prepareEngine(engineType) {
   await ensureContext();
-  const config = ENGINE_LAYER_CONFIG[engineType] || ENGINE_LAYER_CONFIG.v10;
-  if (currentEngineType === engineType && layerPlayers.size === config.length) return;
-
-  stopAllLayers();
+  if (currentEngineType === engineType && engineNodes) return;
+  stopEngine();
   currentEngineType = engineType;
-
-  for (const layer of config) {
-    const buffer = await fetchBuffer(layer.file, engineBuffers);
-    const source = getAudioContext().createBufferSource();
-    const gain = getAudioContext().createGain();
-    gain.gain.value = 0;
-    source.buffer = buffer;
-    source.loop = true;
-    source.connect(gain).connect(mixGain);
-    source.start();
-    layerPlayers.set(layer.id, { source, gain, config: layer });
-  }
-    engineSource.disconnect();
-    if (engineSourceGain) {
-      engineSourceGain.disconnect();
-    }
-    engineSource = null;
-    engineSourceGain = null;
-  }
-}
-
-function setPlaybackRate(rate) {
-  if (!engineSource) return;
-  engineSource.playbackRate.value = rate;
+  engineNodes = buildEngineNodes(getProfile(engineType));
+  updateEngineSound(lastRpm);
 }
 
 function setVolume(volume) {
@@ -247,227 +285,141 @@ function setVolume(volume) {
   }
 }
 
+function updateEngineSound(rpm) {
+  if (!engineNodes) return;
+  lastRpm = rpm;
+  const ctx = getAudioContext();
+  const profile = engineNodes.profile;
+  const normalized = clamp((rpm - MIN_RPM) / (MAX_RPM - MIN_RPM), 0, 1);
+
+  const firingFreq = (rpm / 60) * (profile.cylinders / 2);
+  const baseFreq = clamp(firingFreq, 30, 2000) * shiftPitchMul;
+  const now = ctx.currentTime;
+
+  engineNodes.baseA.frequency.setTargetAtTime(baseFreq, now, 0.06);
+  engineNodes.baseB.frequency.setTargetAtTime(baseFreq, now, 0.06);
+  engineNodes.sub.frequency.setTargetAtTime(baseFreq * 0.5, now, 0.06);
+  engineNodes.buzz.frequency.setTargetAtTime(baseFreq * profile.buzzHarmonic, now, 0.06);
+
+  const baseGain = lerp(profile.baseGain[0], profile.baseGain[1], normalized);
+  const subGain = lerp(profile.subGain[0], profile.subGain[1], normalized);
+  const buzzGain = lerp(profile.buzzGain[0], profile.buzzGain[1], normalized);
+  const noiseGain = lerp(profile.noiseGain[0], profile.noiseGain[1], normalized);
+
+  engineNodes.baseGain.gain.setTargetAtTime(baseGain, now, 0.08);
+  engineNodes.subGain.gain.setTargetAtTime(subGain, now, 0.08);
+  engineNodes.buzzGain.gain.setTargetAtTime(buzzGain, now, 0.08);
+  engineNodes.noiseGain.gain.setTargetAtTime(noiseGain, now, 0.08);
+
+  const bodyCutoff = lerp(profile.bodyFilter[0], profile.bodyFilter[1], normalized);
+  const noiseCutoff = lerp(profile.noiseFilter[0], profile.noiseFilter[1], normalized);
+
+  engineNodes.bodyFilter.frequency.setTargetAtTime(bodyCutoff, now, 0.1);
+  engineNodes.noiseFilter.frequency.setTargetAtTime(noiseCutoff, now, 0.1);
+
+  const drive = lerp(profile.drive[0], profile.drive[1], normalized);
+  engineNodes.driveGain.gain.setTargetAtTime(drive, now, 0.1);
+}
+
 function applyShiftEnvelope(direction, gear) {
   if (!shiftGain) return;
   const ctx = getAudioContext();
   const now = ctx.currentTime;
-  const dip = gear <= 2 ? 0.75 : 0.82;
-  shiftGain.gain.cancelAndHoldAtTime(now);
-  shiftGain.gain.setValueAtTime(1, now);
-  shiftGain.gain.linearRampToValueAtTime(dip, now + 0.08);
-  shiftGain.gain.linearRampToValueAtTime(1, now + 0.28);
+  const dip = gear <= 2 ? 0.6 : 0.8;
+
+  if (shiftGain.gain.cancelAndHoldAtTime) {
+    shiftGain.gain.cancelAndHoldAtTime(now);
+  } else {
+    shiftGain.gain.cancelScheduledValues(now);
+  }
+  shiftGain.gain.setValueAtTime(shiftGain.gain.value, now);
+  shiftGain.gain.linearRampToValueAtTime(dip, now + 0.05);
+  shiftGain.gain.linearRampToValueAtTime(1, now + 0.3);
 
   if (shiftRecoverTimer) clearTimeout(shiftRecoverTimer);
-  shiftPitchMul = 0.88;
+  shiftPitchMul = direction === "DOWN" ? 0.86 : 0.9;
+  updateEngineSound(lastRpm);
+
   shiftRecoverTimer = setTimeout(() => {
     shiftPitchMul = 1;
-    refreshPlaybackRates();
-  }, 220);
-  refreshPlaybackRates();
+    updateEngineSound(lastRpm);
+  }, 200);
 }
 
-function refreshPlaybackRates() {
-  const config = ENGINE_LAYER_CONFIG[currentEngineType] || ENGINE_LAYER_CONFIG.v10;
-  for (const layer of config) {
-    const player = layerPlayers.get(layer.id);
-    if (!player) continue;
-    const base = MIN_RATE + (MAX_RATE - MIN_RATE) * clamp(lastNormalized, 0, 1);
-    const localOffset = clamp((lastNormalized - layer.ratio) * 1.2, -0.2, 0.2);
-    player.source.playbackRate.value = clamp(base + localOffset, MIN_RATE, MAX_RATE) * shiftPitchMul;
-  }
-}
+async function playShiftSound(direction) {
+  await ensureContext();
+  const ctx = getAudioContext();
+  const now = ctx.currentTime;
+  const duration = 0.22;
 
-function crossfadeLayers(normalized) {
-  lastNormalized = normalized;
-  const config = ENGINE_LAYER_CONFIG[currentEngineType] || ENGINE_LAYER_CONFIG.v10;
-  if (config.length === 0) return;
+  const osc = ctx.createOscillator();
+  osc.type = direction === "DOWN" ? "sawtooth" : "triangle";
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.35, now + 0.03);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
-  let lower = config[0];
-  let upper = config[config.length - 1];
+  const startFreq = direction === "DOWN" ? 720 : 620;
+  const endFreq = direction === "DOWN" ? 260 : 1100;
+  osc.frequency.setValueAtTime(startFreq, now);
+  osc.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
 
-  for (let i = 1; i < config.length; i++) {
-    if (normalized <= config[i].ratio) {
-      lower = config[i - 1];
-      upper = config[i];
-      break;
-    }
-  }
+  const noiseSource = createNoiseSource(false);
+  const noiseFilter = ctx.createBiquadFilter();
+  noiseFilter.type = "bandpass";
+  noiseFilter.frequency.value = direction === "DOWN" ? 900 : 1800;
+  noiseFilter.Q.value = 0.8;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.0001, now);
+  noiseGain.gain.exponentialRampToValueAtTime(0.2, now + 0.03);
+  noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
-  const span = Math.max(upper.ratio - lower.ratio, 0.001);
-  const t = clamp((normalized - lower.ratio) / span, 0, 1);
+  osc.connect(gain).connect(volumeGain);
+  noiseSource.connect(noiseFilter).connect(noiseGain).connect(volumeGain);
 
-  layerPlayers.forEach((player) => {
-    const isLower = player.config.id === lower.id;
-    const isUpper = player.config.id === upper.id;
-    const targetGain = isLower ? 1 - t : isUpper ? t : 0;
-    player.gain.gain.setTargetAtTime(targetGain, getAudioContext().currentTime, 0.05);
-  });
+  osc.start(now);
+  noiseSource.start(now);
+  osc.stop(now + duration);
+  noiseSource.stop(now + duration);
 
-  refreshPlaybackRates();
-}
-
-function stopEngineLoop() {
-  stopAllLayers();
+  setTimeout(() => {
+    osc.disconnect();
+    gain.disconnect();
+    noiseSource.disconnect();
+    noiseFilter.disconnect();
+    noiseGain.disconnect();
+  }, (duration + 0.1) * 1000);
 }
 
 async function handleEngineState(message) {
   const { rpm, settings } = message;
-  if (!settings.enabled) return;
-  await prepareEngineLayers(settings.engineType || "v10");
+  if (!settings.enabled) {
+    stopEngine();
+    return;
+  }
+
+  await prepareEngine(settings.engineType || "v10");
   setVolume(settings.volume ?? 0.6);
-  const normalized = clamp((rpm - MIN_RPM) / (MAX_RPM - MIN_RPM), 0, 1);
-  crossfadeLayers(normalized);
-  if (masterGain) {
-    masterGain.gain.setTargetAtTime(volume, getAudioContext().currentTime, 0.05);
-  }
-}
-
-function clampRpm(rpm) {
-  return Math.min(Math.max(rpm, MIN_RPM), MAX_RPM);
-}
-
-function segmentBlend(rpm) {
-  const clamped = clampRpm(rpm);
-  for (let i = 0; i < RPM_SEGMENTS.length; i++) {
-    const segment = RPM_SEGMENTS[i];
-    const isLast = i === RPM_SEGMENTS.length - 1;
-    if (clamped <= segment.end || isLast) {
-      const span = Math.max(segment.end - segment.start, 1);
-      const position = Math.min(Math.max((clamped - segment.start) / span, 0), 1);
-      return {
-        primaryIndex: i,
-        secondaryIndex: isLast ? null : i + 1,
-        secondaryWeight: isLast ? 0 : position
-      };
-    }
-  }
-  return { primaryIndex: 0, secondaryIndex: null, secondaryWeight: 0 };
-}
-
-function updateLayerRates(rpm) {
-  const clamped = clampRpm(rpm);
-  engineLayers.forEach(({ segment, source }) => {
-    const span = Math.max(segment.end - segment.start, 1);
-    const offset = Math.min(Math.max((clamped - segment.start) / span, 0), 1);
-    const rateOffset = (offset - 0.5) * 2 * LAYER_RATE_VARIATION;
-    source.playbackRate.setTargetAtTime(1 + rateOffset, getAudioContext().currentTime, 0.05);
-  });
-}
-
-function updateEngineMix(rpm) {
-  if (!engineLayers.length) return;
-  const { primaryIndex, secondaryIndex, secondaryWeight } = segmentBlend(rpm);
-  const currentTime = getAudioContext().currentTime;
-  engineLayers.forEach((layer, index) => {
-    let target = 0;
-    if (index === primaryIndex) {
-      target = 1 - secondaryWeight;
-    } else if (index === secondaryIndex) {
-      target = secondaryWeight;
-    }
-    layer.gain.gain.setTargetAtTime(target, currentTime, 0.05);
-  });
-  updateLayerRates(rpm);
-}
-
-async function handleEngineState(message) {
-  const { rpm, settings, gear } = message;
-  if (!settings.enabled) return;
-  await ensureEngineLoop(settings.engineType);
-  setVolume(settings.volume ?? 0.6);
-  const playbackRate = computePlaybackRateFromRpm(rpm);
-  lastEngineState = { rpm, gear: gear ?? lastEngineState.gear, playbackRate };
-  const currentTime = getAudioContext().currentTime;
-  if (shiftAutomationEndTime > currentTime && engineSource) {
-    engineSource.playbackRate.setValueAtTime(playbackRate, shiftAutomationEndTime);
-  } else {
-    setPlaybackRate(playbackRate);
-  }
-}
-
-async function playShiftSound(direction) {
-  if (!SHIFT_FILES[direction]) return;
-  await ensureContext();
-  const buffer = await fetchBuffer(SHIFT_FILES[direction], shiftBuffers);
-  const source = getAudioContext().createBufferSource();
-  source.buffer = buffer;
-  source.connect(volumeGain);
-  source.start();
-}
-
-  source.connect(masterGain);
-  source.start();
-}
-
-function computePlaybackRateFromRpm(rpm) {
-  const ratio = Math.min(Math.max((rpm - MIN_RPM) / (MAX_RPM - MIN_RPM), 0), 1);
-  return MIN_RATE + (MAX_RATE - MIN_RATE) * ratio;
-}
-
-function computePostShiftRpm(gear, direction) {
-  const previousGear = direction === "UP" ? gear - 1 : gear + 1;
-  if (previousGear < 1 || gear < 1) {
-    return lastEngineState.rpm;
-  }
-  const gearRatio = previousGear / gear;
-  const estimatedRpm = lastEngineState.rpm * gearRatio;
-  return Math.min(Math.max(estimatedRpm, MIN_RPM), MAX_RPM);
-}
-
-function applyShiftAutomation(direction, gear) {
-  if (!engineSource || !gainNode) return;
-  const ctx = getAudioContext();
-  const now = ctx.currentTime;
-  const adjustedRpm = computePostShiftRpm(gear ?? lastEngineState.gear, direction);
-  const targetPlaybackRate = computePlaybackRateFromRpm(adjustedRpm);
-  const normalizedGear = Math.min(Math.max((gear || lastEngineState.gear) - 1, 0), 7);
-  const dipAmount = 0.22 - normalizedGear * ((0.22 - 0.08) / 7);
-  const dipDuration = 0.12;
-  const releaseDuration = 0.2;
-  const dipPlaybackRate = Math.max(MIN_RATE, targetPlaybackRate * (1 - dipAmount));
-
-  engineSource.playbackRate.cancelScheduledValues(now);
-  engineSource.playbackRate.setValueAtTime(engineSource.playbackRate.value, now);
-  engineSource.playbackRate.linearRampToValueAtTime(dipPlaybackRate, now + dipDuration);
-  engineSource.playbackRate.linearRampToValueAtTime(
-    targetPlaybackRate,
-    now + dipDuration + releaseDuration
-  );
-
-  const gainDipAmount = 0.14 + (0.06 * (1 - normalizedGear / 7));
-  const dipGain = targetVolume * (1 - gainDipAmount);
-  gainNode.gain.cancelScheduledValues(now);
-  gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-  gainNode.gain.linearRampToValueAtTime(dipGain, now + dipDuration);
-  gainNode.gain.linearRampToValueAtTime(targetVolume, now + dipDuration + releaseDuration);
-
-  shiftAutomationEndTime = now + dipDuration + releaseDuration;
-  lastEngineState = {
-    rpm: adjustedRpm,
-    gear: gear ?? lastEngineState.gear,
-    playbackRate: targetPlaybackRate
-  };
+  updateEngineSound(rpm);
 }
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === "ENGINE_STATE") {
     handleEngineState(message);
   } else if (message.type === "STOP_AUDIO") {
-    stopEngineLoop();
+    stopEngine();
   } else if (message.type === "SETTINGS") {
     if (message.settings?.volume !== undefined) {
       setVolume(message.settings.volume);
     }
     if (message.settings?.engineType) {
-      prepareEngineLayers(message.settings.engineType);
+      prepareEngine(message.settings.engineType);
+    }
+    if (message.settings?.enabled === false) {
+      stopEngine();
     }
   } else if (message.type === "SHIFT") {
     applyShiftEnvelope(message.direction, message.gear);
     playShiftSound(message.direction);
-      ensureEngineLoop(message.settings.engineType);
-    }
-  } else if (message.type === "SHIFT") {
-    playShiftSound(message.direction);
-    applyShiftAutomation(message.direction, message.gear);
   }
 });
